@@ -7,12 +7,12 @@
 </head> 
  
 <body> 
+  <a href="#" id="startSecondWindow" style="color:yellow;">Start Window 2</a>
 
   <div id="sidebar">
 
-    <h2>This is Pong!</h2>
-
-    <ul class='parts'>
+    <h2>This is Cross-Domain Pong!</h2>
+    <ul class='parts' style="display:none;">
       <li><a href='/' class='selected'>Full Game</a></li>
       <li><a href='/part1'><i>game runner</i> - Part 1</a></li>
       <li><a href='/part2'><i>bouncing ball</i> - Part 2</a></li>
@@ -46,7 +46,7 @@
 
     <div class='settings'>
       <label for='stats'>stats: </label>
-      <input type='checkbox' id='stats' checked>
+      <input type='checkbox' id='stats'>
     </div>
 
     <div class='settings'>
@@ -90,8 +90,20 @@
     Game.addEvent(footprints,  'change', function() { pong.showFootprints(footprints.checked);   });
     Game.addEvent(predictions, 'change', function() { pong.showPredictions(predictions.checked); });
 
+    window.addEventListener('message', function(event){
+      var message = JSON.parse(event.data);
+      console.log(message);
+      if (message.scores) {
+        pong.scores = message.scores;
+      } else if(message.ball) {
+        pong.transferTo(message.ball);
+      }
+    });
+
+    document.getElementById("startSecondWindow").onclick = function() {
+      pong.otherWindow = window.open("index.html?player=2", "player2Window");
+    };
   });
   </script>
-
 </body> 
 </html>

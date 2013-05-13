@@ -14,7 +14,7 @@ Pong = {
     ballSpeed:    4,     // should be able to cross court horizontally in 4 seconds, at starting speed ...
     ballAccel:    8,     // ... but accelerate as time passes
     ballRadius:   5,
-    sound:        true
+    sound:        true,
   },
 
   Colors: {
@@ -69,17 +69,17 @@ Pong = {
       this.rightPaddle = Object.construct(Pong.Paddle, this, true);
       this.ball        = Object.construct(Pong.Ball,   this);
       this.sounds      = Object.construct(Pong.Sounds, this);
+      this.otherWindow = window.opener;
       this.runner.start();
     }.bind(this));
   },
 
-  startDemo:         function() { this.start(0); },
-  startSinglePlayer: function() { this.start(1); },
-  startDoublePlayer: function() { this.start(2); },
+  startDemo:         function() { this.scores = [0, 0]; this.start(0); },
+  startSinglePlayer: function() { this.scores = [0, 0]; this.start(1); },
+  startDoublePlayer: function() { this.scores = [0, 0]; this.start(2); },
 
   start: function(numPlayers) {
     if (!this.playing) {
-      this.scores = [0, 0];
       this.playing = true;
       this.leftPaddle.setAuto(numPlayers < 1, this.level(0));
       this.rightPaddle.setAuto(numPlayers < 2, this.level(1));
@@ -87,7 +87,6 @@ Pong = {
       this.runner.hideCursor();
     }
   },
-
   stop: function(ask) {
     if (this.playing) {
       if (!ask || this.runner.confirm('Abandon game in progress ?')) {
@@ -103,9 +102,18 @@ Pong = {
     return 8 + (this.scores[playerNo] - this.scores[playerNo ? 0 : 1]);
   },
 
+  setGoal: function(playerNo){
+    this.goal(playerNo);
+
+    if (this.otherWindow) {
+      this.otherWindow.postMessage(JSON.stringify({scores:this.scores}), "*");
+    }
+  },
+  
   goal: function(playerNo) {
     this.sounds.goal();
     this.scores[playerNo] += 1;
+
     if (this.scores[playerNo] == 9) {
       this.menu.declareWinner(playerNo);
       this.stop();
@@ -130,14 +138,44 @@ Pong = {
         this.sounds.pong();
       else if (this.ball.dy * dy < 0)
         this.sounds.wall();
+      else if (this.ball.isMidcourt()) {
+        this.transfer();
+      }
 
-      if (this.ball.left > this.width)
-        this.goal(0);
-      else if (this.ball.right < 0)
-        this.goal(1);
+      if (this.ball.left > this.width){
+        this.setGoal(0);
+      }
+      else if (this.ball.right < 0){
+        this.setGoal(1);
+      }
     }
   },
-
+  transfer : function() {
+    var directionFactor = this.ball.dx > 0 ? 1 : -1;
+    this.ball.setpos(this.ball.x + this.ball.radius * 2 * directionFactor, this.ball.y);
+    if (this.otherWindow) {
+      this.playing = false;
+      var message = JSON.stringify({ball:{x:this.ball.x, y:this.ball.y,
+                                          dx:this.ball.dx, dy:this.ball.dy,
+                                          accel:this.ball.accel, speed:this.ball.speed}});
+      if (this.otherWindow) {
+        this.otherWindow.postMessage(message, "*");
+      }
+    }
+  },
+  
+  transferTo: function(newBall) {
+    if (!this.playing) {
+      this.start(0);
+    }
+    
+    this.ball.dx = newBall.dx;
+    this.ball.dy = newBall.dy;
+    this.ball.accel = newBall.accel;
+    this.ball.speed = newBall.speed;
+    this.ball.setpos(newBall.x, newBall.y);
+  },
+  
   draw: function(ctx) {
     this.court.draw(ctx, this.scores[0], this.scores[1]);
     this.leftPaddle.draw(ctx);
@@ -158,6 +196,7 @@ Pong = {
       case Game.KEY.A:    if (!this.leftPaddle.auto)  this.leftPaddle.moveDown();  break;
       case Game.KEY.P:    if (!this.rightPaddle.auto) this.rightPaddle.moveUp();   break;
       case Game.KEY.L:    if (!this.rightPaddle.auto) this.rightPaddle.moveDown(); break;
+      case Game.KEY.TILDA:this.playing = !this.playing;break;
     }
   },
 
@@ -471,8 +510,20 @@ Pong = {
       this.maxY    = pong.height - pong.cfg.wallWidth - this.radius;
       this.speed   = (this.maxX - this.minX) / pong.cfg.ballSpeed;
       this.accel   = pong.cfg.ballAccel;
+      this.previousSpeed = this.speed;
     },
 
+    isMidcourt: function() {
+      var midCourt = this.pong.width / 2;
+
+      if(this.x > (midCourt - this.radius) && this.x < (midCourt + this.radius)) {
+        return true;
+      }
+      else {
+        return false;
+      }
+    },
+    
     reset: function(playerNo) {
       this.footprints = [];
       this.setpos(playerNo == 1 ?   this.maxX : this.minX,  Game.random(this.minY, this.maxY));
