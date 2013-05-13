@@ -85,6 +85,7 @@
       predictions: predictions.checked
     });
 
+    
     Game.addEvent(sound,       'change', function() { pong.enableSound(sound.checked);           });
     Game.addEvent(stats,       'change', function() { pong.showStats(stats.checked);             });
     Game.addEvent(footprints,  'change', function() { pong.showFootprints(footprints.checked);   });
@@ -101,9 +102,10 @@
     });
 
     document.getElementById("startSecondWindow").onclick = function() {
-      pong.otherWindow = window.open("index.html?player=2", "player2Window");
+      pong.otherWindow = window.open("http://dtjon.github.io/javascript-pong/index.html?player=2", "player2Window");
     };
   });
   </script>
+  <a href="http://javascript-pong.s3-website-us-west-2.amazonaws.com/">Go to Amazon Hosted Instance</a>
 </body> 
 </html>
